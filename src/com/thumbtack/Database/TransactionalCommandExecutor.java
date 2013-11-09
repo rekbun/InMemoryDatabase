@@ -10,6 +10,9 @@ import java.util.*;
  * To change this template use File | Settings | File Templates.
  */
 
+/**
+ * data structure for keeping track of transaction and integer value i.e. value count/ value 
+*/
 class DataSet {
 	Integer transactionNumber;
 	Integer value;
@@ -40,13 +43,13 @@ class TransactionalCommandExecutor {
 		switch(cc) {
 
 			case BEGIN:
-				if(transactionCount==0) {
+				/*if(transactionCount==0) {
 					for(Map.Entry<Integer, Integer> kv: database.vcMap.entrySet()) {
 						ArrayList<DataSet> dataSets=new ArrayList<DataSet>();
 						dataSets.add(new DataSet(0,kv.getValue()));
 						vclMap.put(kv.getKey(),dataSets);
 					}
-				}
+				}*/
 				transactionCount++;
 				break;
 
@@ -87,6 +90,8 @@ class TransactionalCommandExecutor {
 				}else if(svlMap.size()>0) {
 					rollbackVariablesValues();
 					rollbackValueCounts();
+				}
+				if(transactionCount>0) {
 					transactionCount--;
 				}
 				if(transactionCount<=0) {
@@ -100,8 +105,9 @@ class TransactionalCommandExecutor {
 				}
 				for(Map.Entry<String, ArrayList<DataSet>> list:svlMap.entrySet()) {
 					database.setVariable(list.getKey(),list.getValue().get(list.getValue().size()-1).value);
-					transactionCount=0;
 				}
+				transactionCount=0;
+
 				svlMap.clear();
 				vclMap.clear();
 				database.TransactionCompleted();
@@ -110,6 +116,9 @@ class TransactionalCommandExecutor {
 		return true;
 	}
 
+	/*
+	 rollbacks all the value counts of the current transaction from the map by iterating over it 
+	 */
 	private void rollbackValueCounts() {
 		for(Iterator<Map.Entry<String,ArrayList<DataSet>>> it = svlMap.entrySet().iterator(); it.hasNext(); ) {
 			Map.Entry<String, ArrayList<DataSet>> entry = it.next();
@@ -124,6 +133,9 @@ class TransactionalCommandExecutor {
 		}
 	}
 
+	/*
+	 rollbacks all the values of the current transaction from the map by iterating over it
+	 */
 	private void rollbackVariablesValues() {
 		for(Iterator<Map.Entry<Integer,ArrayList<DataSet>>> it = vclMap.entrySet().iterator(); it.hasNext(); ) {
 			Map.Entry<Integer, ArrayList<DataSet>> entry = it.next();
@@ -142,52 +154,72 @@ class TransactionalCommandExecutor {
 		System.out.println(Constants.NO_TRANSACTION);
 	}
 
-	private void set(String name,Integer value) {
-		Integer newValue=value;
+	/*
+	set the value and and its count in the transaction map
+	 LOGIC: partially explained
+	 if [svlMap] contains [name] then
+	    if  it is a new transaction then
+	        add a new dataset [name,<transactionNumber,value>]
+	        update [vclMap] by adding new Block [newValue,<transactionNumber,valueCount+1>]
+	            and adding another block [oldValue,<transactionNumber,valueCount-1>]
+        else
+            update the current values in svl map
+     else add a new block
 
-		ArrayList<DataSet> dataSetArrayList=svlMap.get(name);
-		ArrayList<DataSet> newValueCountList=vclMap.get(newValue);
+     complexity expected: O(1)
+	 */
+	
+	private void set(String name,Integer newValue) {
+		ArrayList<DataSet> listOfValuesForName=svlMap.get(name);
+		ArrayList<DataSet> listOfCountForCurrentValue=vclMap.get(newValue);
 		Integer oldValue;
+		DataSet dataSet;
 		ArrayList<DataSet> oldValueCountList;
 
-		if(dataSetArrayList!=null) {
-			oldValue=dataSetArrayList.get(dataSetArrayList.size()-1).value;
+		if(listOfValuesForName!=null) {
+			oldValue=listOfValuesForName.get(listOfValuesForName.size()-1).value;
 			oldValueCountList=vclMap.get(oldValue);
 
+			if(listOfValuesForName.size()<transactionCount) {
+				dataSet= new DataSet(transactionCount,newValue);
+				listOfValuesForName.add(dataSet);
 
-			if(dataSetArrayList.size()<transactionCount) {
-				DataSet dataSet= new DataSet(transactionCount,newValue);
-				dataSetArrayList.add(dataSet);
-				oldValueCountList.add(new DataSet(transactionCount,oldValueCountList.get(oldValueCountList.size()-1).value-1));
-	            if(newValueCountList==null) {
-		            newValueCountList=new ArrayList<DataSet>();
-	            }
-	            newValueCountList.add(new DataSet(transactionCount,newValue));
-	        }else {
 				if(oldValue!=newValue) {
-					updateValueCountMap(newValue, newValueCountList, oldValueCountList);
+					oldValueCountList.add(new DataSet(transactionCount,oldValueCountList.get(oldValueCountList.size()-1).value-1));
+				}
+
+                if(listOfCountForCurrentValue==null) {
+	              listOfCountForCurrentValue=new ArrayList<DataSet>();
+	              vclMap.put(newValue,listOfCountForCurrentValue);
+	            }
+	            listOfCountForCurrentValue.add(new DataSet(transactionCount, newValue));
+	        }else {
+
+				if(oldValue!=newValue) {
+					listOfValuesForName.get(listOfValuesForName.size()-1).value=newValue;
+					updateValueCountMap(newValue, listOfCountForCurrentValue, oldValueCountList);
 				}
 			}
 		}else {
 			oldValue=database.getValue(name);
 			if(oldValue!=null) {
 				oldValueCountList = new ArrayList<DataSet>();
-				DataSet set = new DataSet(transactionCount,database.getValueCount(oldValue)-1);
-				oldValueCountList.add(set);
+				dataSet = new DataSet(transactionCount,database.getValueCount(oldValue)-1);
+				oldValueCountList.add(dataSet);
 				vclMap.put(oldValue,oldValueCountList);
 			}
-			dataSetArrayList=new ArrayList<DataSet>();
-			dataSetArrayList.add(new DataSet(transactionCount,newValue));
-			if(newValueCountList!=null) {
-				DataSet dataSet=new DataSet(transactionCount,newValueCountList.get(newValueCountList.size()-1).value+1);
+			listOfValuesForName=new ArrayList<DataSet>();
+			listOfValuesForName.add(new DataSet(transactionCount, newValue));
+			if(listOfCountForCurrentValue!=null) {
+				dataSet=new DataSet(transactionCount,listOfCountForCurrentValue.get(listOfCountForCurrentValue.size()-1).value+1);
 				vclMap.get(newValue).add(dataSet);
 			}else {
-				newValueCountList=new ArrayList<DataSet>();
+				listOfCountForCurrentValue=new ArrayList<DataSet>();
 
-				addNewDataset(newValueCountList);
-				vclMap.put(newValue,newValueCountList);
+				addNewDataset(listOfCountForCurrentValue);
+				vclMap.put(newValue,listOfCountForCurrentValue);
 			}
-			svlMap.put(name,dataSetArrayList);
+			svlMap.put(name,listOfValuesForName);
 		}
 	}
 
