@@ -21,9 +21,11 @@ class DataSet {
 }
 
 class TransactionalCommandExecutor {
-	HashMap<String,ArrayList<DataSet>> svlMap;
-	HashMap<Integer,ArrayList<DataSet>> vclMap;
+	HashMap<String,ArrayList<DataSet>> svlMap;      //map for keeping variable values
+	HashMap<Integer,ArrayList<DataSet>> vclMap;     //map for storing value counts
+
 	SimpleDatabase database;
+
 	int transactionCount;
 
 	public TransactionalCommandExecutor(SimpleDatabase simpleDatabase) {
@@ -33,7 +35,7 @@ class TransactionalCommandExecutor {
 		transactionCount=0;
 	}
 
-	public boolean execute(Commands cc, String[] commandAndParams) {
+	public boolean execute(Command cc, String[] commandAndParams) {
 		ArrayList<DataSet> valueList;
 		switch(cc) {
 
@@ -49,24 +51,24 @@ class TransactionalCommandExecutor {
 				break;
 
 			case GET:
-				valueList=svlMap.get(commandAndParams[Constants.VARIABLE_NAME_INDEX]);
+				valueList=svlMap.get(commandAndParams[Constants.VARIABLE_INDEX]);
 				if(valueList==null || valueList.size()==0) {
-					System.out.println(database.getValue(commandAndParams[Constants.VARIABLE_NAME_INDEX]));
+					System.out.println(database.getValue(commandAndParams[Constants.VARIABLE_INDEX]));
 				}else {
 					System.out.println(valueList.get(valueList.size()-1).value);
 				}
 				break;
 
 			case SET:
-				set(commandAndParams[Constants.VARIABLE_NAME_INDEX],Integer.parseInt(commandAndParams[Constants.VARIABLE_VALUE_INDEX]));
+				set(commandAndParams[Constants.VARIABLE_INDEX],Integer.parseInt(commandAndParams[Constants.VALUE_INDEX]));
 				break;
 
 			case UNSET:
-				set(commandAndParams[Constants.VARIABLE_NAME_INDEX],null);
+				set(commandAndParams[Constants.VARIABLE_INDEX],null);
 				break;
 
 			case NUMEQUALTO:
-				Integer value= Integer.parseInt(commandAndParams[Constants.VARIABLE_NAME_INDEX]);
+				Integer value= Integer.parseInt(commandAndParams[Constants.VARIABLE_INDEX]);
 				valueList= vclMap.get(value);
 				if(valueList!=null&&valueList.size()!=0) {
 					System.out.println(valueList.get(valueList.size()-1).value);

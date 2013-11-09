@@ -10,7 +10,7 @@ import java.util.HashMap;
  * Time: 8:08 AM
  * To change this template use File | Settings | File Templates.
  */
-enum Commands {
+enum Command {
 	GET,
 	SET,
 	UNSET,
@@ -22,8 +22,8 @@ enum Commands {
 }
 
 class Constants {
-	public static int VARIABLE_NAME_INDEX=1;
-	public static int VARIABLE_VALUE_INDEX=2;
+	public static int VARIABLE_INDEX =1;
+	public static int VALUE_INDEX =2;
 
 	public static final String NO_TRANSACTION = "NO TRANSACTION";
 }
@@ -79,7 +79,7 @@ public class SimpleDatabase {
 		while (!finished) {
 			String command = inputStream.readLine();
 			String[] commandAndParams = command.split(" ");
-			Commands cc = Commands.valueOf(commandAndParams[COMMAND_INDEX]);
+			Command cc = Command.valueOf(commandAndParams[COMMAND_INDEX]);
 			switch (cc) {
 				case BEGIN:
 					isDataCommand=false;
